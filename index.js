@@ -13,7 +13,7 @@ let lastTx = '';
 
 async function fetchSales() {
   try {
-    const response = await axios.get('https://api.hyperliquid.xyz/fills/nft');
+    const res = await axios.get(`https://api.hyperliquid.market/v1/fills/nft`);
     const sales = response.data;
 
     for (const sale of sales) {
