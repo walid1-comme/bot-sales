@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits } from 'discord.js';
+import { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, Events } from 'discord.js';
 import dotenv from 'dotenv';
 import axios from 'axios';
 
@@ -47,6 +47,43 @@ async function fetchSales() {
   }
 }
 
+// ----------- Slash Commands Setup -----------
+const commands = [
+  new SlashCommandBuilder().setName('ping').setDescription('Check if bot is alive!'),
+  new SlashCommandBuilder().setName('floor').setDescription('Get current floor price (mocked for now)'),
+].map(command => command.toJSON());
+
+const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
+
+// Register commands
+(async () => {
+  try {
+    console.log('🔁 Registering slash commands...');
+    await rest.put(
+      Routes.applicationCommands(process.env.CLIENT_ID),
+      { body: commands }
+    );
+    console.log('✅ Slash commands registered.');
+  } catch (error) {
+    console.error('Error registering commands:', error);
+  }
+})();
+
+// Respond to commands
+client.on(Events.InteractionCreate, async interaction => {
+  if (!interaction.isChatInputCommand()) return;
+
+  if (interaction.commandName === 'ping') {
+    await interaction.reply('🏓 Pong! Bot is alive.');
+  }
+
+  if (interaction.commandName === 'floor') {
+    // You can replace with real API call later
+    await interaction.reply('🟡 Current floor price is **0.12 HYPE** (mock)');
+  }
+});
+
+// ----------- When Bot Is Ready -----------
 client.once('ready', () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
   setInterval(fetchSales, 20000); // every 20s
