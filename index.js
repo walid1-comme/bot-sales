@@ -5,7 +5,6 @@ import axios from 'axios';
 dotenv.config();
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
-
 const channelId = process.env.CHANNEL_ID;
 const contractAddress = process.env.CONTRACT_ADDRESS.toLowerCase();
 
@@ -13,60 +12,56 @@ let lastTx = '';
 
 async function fetchSales() {
   try {
-    const response = await axios.get('https://api.hyperliquid.market/v1/fills/nft');
-    const sales = response.data;
+    const res = await axios.get('https://api.hyperliquid.market/v1/fills/nft');
+    const sales = res.data;
 
     for (const sale of sales) {
-      const saleContract = sale.contract.toLowerCase();
-      const saleType = sale.type || ''; // check for "bid" or "sale"
+      console.log('🔍 Checking sale:', sale);
 
-      // ONLY post if:
-      // 1. it's our contract
-      // 2. it's a sale (not just bid)
-      // 3. it's new tx
-      if (
-        saleContract === contractAddress &&
-        sale.txHash !== lastTx &&
-        saleType.toLowerCase() !== 'bid'
-      ) {
+      const isTargetContract = sale.contract.toLowerCase() === contractAddress;
+      const isNewTx = sale.txHash !== lastTx;
+      const isBuy = sale.side === 'buy';
+
+      if (isTargetContract && isNewTx && isBuy) {
         lastTx = sale.txHash;
 
         const embed = {
-          title: `🎉 New CapyBros NFT Sale`,
+          title: `🎉 CapyBros NFT Sold!`,
           description: `**Token ID:** #${sale.tokenId}\n**Price:** ${sale.price} HYPE`,
           fields: [
             {
               name: 'Marketplace',
-              value: '[View on Drip.trade](https://drip.trade/)',
+              value: '[Drip.trade](https://drip.trade/)',
+              inline: true,
             },
             {
-              name: 'NFT Link',
-              value: `[Token #${sale.tokenId}](https://drip.trade/token/${sale.contract}/${sale.tokenId})`,
+              name: 'View Token',
+              value: `[Click Here](https://drip.trade/token/${sale.contract}/${sale.tokenId})`,
+              inline: true,
             },
           ],
           image: {
             url: `https://bafybeiaxrxose2a5rqc5awcgdkvweu754ru6vae57ikxpaubedpenzsc7e.ipfs.w3s.link/${sale.tokenId}.png`,
           },
-          footer: {
-            text: `Tx Hash: ${sale.txHash}`,
-          },
+          footer: { text: `Tx: ${sale.txHash}` },
           timestamp: new Date().toISOString(),
           color: 0x00ffcc,
         };
 
         const channel = await client.channels.fetch(channelId);
         await channel.send({ embeds: [embed] });
-        console.log(`✅ Posted sale for token #${sale.tokenId}`);
+        console.log('✅ Sale posted to Discord.');
       }
     }
-  } catch (error) {
-    console.error('❌ Error fetching sales:', error.message);
+  } catch (err) {
+    console.error('❌ Error fetching sales:', err.message);
   }
 }
 
 client.once('ready', () => {
-  console.log(`✅ Bot logged in as ${client.user.tag}`);
-  setInterval(fetchSales, 15000); // every 15 seconds
+  console.log(`🤖 Logged in as ${client.user.tag}`);
+  fetchSales(); // initial check
+  setInterval(fetchSales, 20000); // every 20s
 });
 
 client.login(process.env.DISCORD_TOKEN);
